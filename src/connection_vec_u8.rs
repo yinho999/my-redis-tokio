@@ -3,6 +3,7 @@ use bytes::{BufMut, BytesMut};
 use tokio::net::TcpStream;
 use tokio::io::AsyncReadExt;
 use mini_redis::{Frame, Result};
+use mini_redis::frame::Error;
 
 pub struct Connection {
     stream: TcpStream,
@@ -75,8 +76,8 @@ impl Connection {
 
                 // endregion
             }
-            // Not enouch data has been buffered
-            Err(Incomplete) => Ok(None),
+            // Not enough data has been buffered
+            Err(Error::Incomplete) => Ok(None),
             Err(e) => Err(e.into()),
         }
         // endregion
