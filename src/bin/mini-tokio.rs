@@ -47,6 +47,8 @@ impl Future for Delay {
             // a different task between calls to `poll`. If this happens, the
             // waker contained by the given `Context` will differ and we
             // must update our stored waker to reflect this change.
+
+            // We need this because lets say Task A polls the future and then Task B polls the future. If we dont update the waker, then when the timer thread wakes up, it will wake up and return the future to Task A, even though Task B is the latest one that polled the future.
             if !waker.will_wake(cx.waker()) {
                 *waker = cx.waker().clone();
             }
