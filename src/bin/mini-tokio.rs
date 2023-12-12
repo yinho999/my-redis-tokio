@@ -7,7 +7,23 @@ use std::time::{Duration, Instant};
 use futures::task::ArcWake;
 use tokio::sync::Notify;
 use std::cell::RefCell;
+/*
+    * Process
+    MiniTokio.spawn() -> Task.spawn() -> MiniTokio.run() (Poll the future for the first time) -> wake_by_ref (Finish polling) -> schedule() (send self to schedule channel in MiniTokio) -> MiniTokio.run() (Poll the future again after wake_by_ref).
 
+    * Explanation
+    1. MiniTokio::spawn() is called to spawn a new task. This calls Task::spawn(), which creates a new Task instance and sends it to the MiniTokio's scheduling channel.
+
+    2. MiniTokio::run() is called to start the executor's main loop. This loop continuously receives tasks from the scheduling channel and polls them.
+
+    3. When a task is polled for the first time, it's done by MiniTokio::run(). If the task's future is not ready (i.e., it's waiting for an asynchronous operation to complete), it will return Poll::Pending and yield control back to the executor.
+
+    4. At some point, the asynchronous operation that the task's future was waiting for completes. This causes the wake_by_ref() method to be called on the task's Waker. Because of the ArcWake implementation for Task, this calls Task::schedule(), which sends the task back to the MiniTokio's scheduling channel.
+
+    5. Back in the MiniTokio::run() loop, the task is received from the scheduling channel and polled again. If the future is now ready, it will make progress and possibly complete. If it's still not ready, the process repeats from step 4.
+
+    So, the ArcWake trait and the wake_by_ref() method are used to signal that a task should be re-polled, but the actual polling is always done by the executor in the MiniTokio::run() method.
+ */
 struct Delay {
     when: Instant,
     // This is `Some` when we have spawned a thread, `None` when we haven't.
@@ -161,6 +177,7 @@ impl MiniTokio {
         }
     }
 }
+
 async fn delay(dur: Duration) {
     let when = Instant::now() + dur;
     let notify = Arc::new(Notify::new());
@@ -192,8 +209,8 @@ thread_local! {
 // half. Then, spawning requires creating the `Task` harness for the given
 // `future` and pushing it into the scheduled queue.
 pub fn spawn<F>(future: F)
-where
-    F: Future<Output = ()> + Send + 'static,
+    where
+        F: Future<Output=()> + Send + 'static,
 {
     CURRENT.with(|cell| {
         let borrow = cell.borrow();
