@@ -32,6 +32,13 @@ async fn main() {
     let (tx2, rx2) = oneshot::channel();
 
     // use tx1 and tx2
+    tokio::spawn(async {
+        let _ = tx1.send("one");
+    });
+
+    tokio::spawn(async {
+        let _ = tx2.send("two");
+    });
 
     MySelect {
         rx1,
