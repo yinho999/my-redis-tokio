@@ -45,6 +45,7 @@ async fn main() {
             // if !done is a branch precondition which runs before async expression, it will disable this branch if the condition is false. In this case when done is true, the async expression will not be polled.
             // without if !done, this branch will failed with "`async fn` resume after completion" error in the first iteration because action(None) is completed in the line 19.
             // the first iteration - immediately return None because the async operation is completed on top. And this will not cause "`async fn` resume after completion" error since the async operation is not polled again before a new operation is set in the first branch.
+            // `&mut operation` can only be poll before complete, therefore if the async operation is completed, it shouldnt be polled again. Therefore we disable this branch by if the operation has been polled once and completed. Until a new operator has been set in the first branch, then we can poll the `&mut operation` again.
             res = &mut operation, if !done => {
                 done = true;
                 println!("GOT = {:?}", res);
