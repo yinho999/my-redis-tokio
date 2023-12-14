@@ -15,6 +15,7 @@ async fn main() {
     let (mut tx, mut rx) = tokio::sync::mpsc::channel(128);
 
     let mut done = false;
+    // We need to initialize the operation to something. Therefore we set it to None.
     let operation = action(None);
     tokio::pin!(operation);
 
@@ -42,7 +43,8 @@ async fn main() {
             // 3. Wait for the async operation to complete, in the same time listen for more even values on the channel
             // 4. If a new even value is received, abort the existing operation and start over with the new even value. Since the operation is aborted, the async operation will not be polled.
             // if !done is a branch precondition which runs before async expression, it will disable this branch if the condition is false. In this case when done is true, the async expression will not be polled.
-            // If operation was polled again after completing, it would panic with a "poll after Complete" error. The if !done condition prevents this from happening by disabling the operation branch of the select! macro once operation has completed 4.
+            // without if !done, this branch will failed with "`async fn` resume after completion" error in the first iteration because action(None) is completed in the line 19.
+            // the first iteration - immediately return None because the async operation is completed on top. And this will not cause "`async fn` resume after completion" error since the async operation is not polled again before a new operation is set in the first branch.
             res = &mut operation, if !done => {
                 done = true;
                 println!("GOT = {:?}", res);
