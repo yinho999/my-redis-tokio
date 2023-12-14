@@ -13,7 +13,7 @@ async fn main() {
 
     // `tokio::select!` expression waits for the value from either rx1.recv() or rx2.recv()
     // Some(T) is returned if the channel is not closed
-    // None is returned if the channel is closed. None does not match the pattern Some(v) = rx1.recv() and Some(v) = rx2.recv(), therefore the None case is handled by the else branch.
+    // If the channel is closed, None is returned and it does not match the pattern, therefore the select! expression will continue to wait for the value from the other channel
     tokio::select! {
         Some(v) = rx1.recv() => {
             println!("Got {:?} from rx1", v);
